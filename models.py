@@ -17,7 +17,6 @@ class Usuario(Base):
 class Lista(Base):
 
 
-    #jijijiji
     __tablename__ = "listas"
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"))
