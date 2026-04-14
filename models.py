@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
-#jijiju
+
 class Usuario(Base):
     __tablename__ = "usuarios"
     id = Column(Integer, primary_key=True, index=True)
@@ -15,6 +15,9 @@ class Usuario(Base):
     listas = relationship("Lista", back_populates="usuario", cascade="all, delete")
     peliculas_vistas = relationship("PeliculaVista", back_populates="usuario", cascade="all, delete")
 class Lista(Base):
+
+
+    #jijijiji
     __tablename__ = "listas"
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"))
