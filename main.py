@@ -3,6 +3,7 @@ from database import engine, Base
 from routes import router
 import time
 
+# espera a que PostgreSQL esté listo
 def create_tables():
     for i in range(10):
         try:
