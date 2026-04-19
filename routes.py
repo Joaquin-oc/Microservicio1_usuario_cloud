@@ -1,119 +1,125 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Usuario, Lista, ListaPelicula, PeliculaVista
-from datetime import datetime
-import requests
-from para_json import UsuarioCreate, UsuarioUpdate, ListaCreate, AgregarPelicula
-import os
+from models import Usuario, PeliculaVista, Pelicula, Rol
+from para_json import UsuarioCreate, UsuarioUpdate, PeliculaCreate
+from auth import get_usuario_actual, solo_admin, hash_password
 
 router = APIRouter()
 
-MS3_URL = os.getenv("MS3_URL", "http://ms3:8002")
+@router.post("/auth/registro")
+def registro(usuario: UsuarioCreate, db: Session = Depends(get_db)):
+    existe = db.query(Usuario).filter(Usuario.email == usuario.email).first()
+    if existe:
+        raise HTTPException(status_code=400, detail="el correo ya eesta ya")
+    
+    nuevo = Usuario(
+        nombre=usuario.nombre,
+        email=usuario.email,
+        password=hash_password(usuario.password),
+        pais=usuario.pais
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return nuevo
 
-@router.get("/usuarios")
-def get_usuarios(db: Session = Depends(get_db)):
-    usuarios = db.query(Usuario).all()
-    return usuarios
+@router.get("/auth/login")
+def login(usuario: Usuario = Depends(get_usuario_actual)):
+    return {"mensaje": f"ola {usuario.nombre}"}
 
+
+
+#pal normal
 @router.get("/usuarios/{id}")
-def get_usuario(id: int, db: Session = Depends(get_db)):
+def get_usuario(id: int, usuario_actual: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.id == id).first()
     if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        raise HTTPException(status_code=404, detail="Usuario no esta")
     return usuario
 
-@router.post("/usuarios")
-def crear_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
-    usuario_nuevo = Usuario(nombre=usuario.nombre, email=usuario.email, pais=usuario.pais)
-    db.add(usuario_nuevo)
-    db.commit()
-    db.refresh(usuario_nuevo)
-    return usuario_nuevo
-
 @router.put("/usuarios/{id}")
-def actualizar_usuario(id: int, usuario: UsuarioUpdate, db: Session = Depends(get_db)):
+def actualizar_usuario(id: int, datos: UsuarioUpdate, usuario_actual: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.id == id).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    usuario.nombre = usuario.nombre
-    usuario.pais = usuario.pais
+    
+    usuario.nombre = datos.nombre
+    usuario.pais = datos.pais
     db.commit()
     return usuario
 
 @router.delete("/usuarios/{id}")
-def eliminar_usuario(id: int, db: Session = Depends(get_db)):
+def eliminar_usuario(id: int, usuario_actual: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.id == id).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    #requests.delete(f"{MS3_URL}/grupos/usuario/{id}/salir-todos") #o el nombre q le ponga bruno al endpoint
-    #aca sale error xq aun no esta el metodo ps, asi q no se puede eliminar
+    
     db.delete(usuario)
     db.commit()
-    return {"Usuario eliminado"}
+    return {"mensaje": "Usuario eliminado"}
+
+@router.get("/usuarios/{id}/peliculas_vistas")
+def get_peliculas_vistas(id: int, usuario_actual: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
+    return db.query(PeliculaVista).filter(PeliculaVista.usuario_id == id).all()
 
 
 
+#pal admin
+@router.get("/usuarios")
+def get_todos_usuarios(admin: Usuario = Depends(solo_admin), db: Session = Depends(get_db)):
+    return db.query(Usuario).all()
 
-@router.get("/listas")
-def get_todas_listas(db: Session = Depends(get_db)):
-    listas = db.query(Lista).all()
-    return listas
-
-@router.get("/listas/usuario/{usuario_id}")
-def get_listas_de_usuaria(usuario_id: int, db: Session = Depends(get_db)):
-    listas = db.query(Lista).filter(Lista.usuario_id == usuario_id).all()
-    return listas
-
-@router.post("/usuarios/{usuario_id}/listas")
-def crear_lista(usuario_id: int, lista: ListaCreate, db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    nueva = Lista(usuario_id=usuario_id, nombre=lista.nombre)
+@router.post("/peliculas")
+def crear_pelicula(pelicula: PeliculaCreate, admin: Usuario = Depends(solo_admin), db: Session = Depends(get_db)):
+    nueva = Pelicula(
+        titulo=pelicula.titulo,
+        descripcion=pelicula.descripcion,
+        año=pelicula.año,
+        genero=pelicula.genero
+    )
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
     return nueva
 
-@router.delete("/listas/{id}")
-def eliminar_lista(db: Session = Depends(get_db)):
-    lista = db.query(Lista).filter(Lista.id == id).first()
-    db.delete(lista)
+@router.get("/peliculas")
+def get_peliculas(usuario_actual: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
+    return db.query(Pelicula).all()
+
+@router.get("/peliculas/{id}")
+def get_pelicula(id: int, usuario_actual: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
+    pelicula = db.query(Pelicula).filter(Pelicula.id == id).first()
+    if not pelicula:
+        raise HTTPException(status_code=404, detail="Película no encontrada")
+    return pelicula
+
+@router.delete("/peliculas/{id}")
+def eliminar_pelicula(id: int, admin: Usuario = Depends(solo_admin), db: Session = Depends(get_db)):
+    pelicula = db.query(Pelicula).filter(Pelicula.id == id).first()
+    if not pelicula:
+        raise HTTPException(status_code=404, detail="Película no encontrada")
+    db.delete(pelicula)
     db.commit()
-    return {"Lista eliminada"}
+    return {"mensaje": "Película eliminada"}
 
 
 
 
-@router.get("/listas/{lista_id}/peliculas")
-def get_peliculas_lista(lista_id: int, db: Session = Depends(get_db)):
-    peliculas = db.query(ListaPelicula).filter(ListaPelicula.lista_id == lista_id).all()
-    return peliculas
 
-@router.post("/listas/{lista_id}/agregar_pelicula")
-def añadir_pelicula(lista_id: int, pelicula: AgregarPelicula, db: Session = Depends(get_db)):
-    peliculas = ListaPelicula(lista_id=lista_id, pelicula_id=pelicula.pelicula_id)
-    db.add(peliculas)
-    db.commit()
-    db.refresh(peliculas)
-    return peliculas
-
-@router.delete("/listas/{lista_id}")
-def eleiminar_pelicula(lista_id: int, pelicula_id: int, db: Session = Depends(get_db)):
-    lista = db.query(ListaPelicula).filter(ListaPelicula.lista_id == lista_id, ListaPelicula.pelicula_id == pelicula_id).first()
-    db.delete(lista)
-    db.commit()
-    return {"Pelicula eliminada"}
-
-
-
-
-@router.get("/usuarios/{usuario_id}/peliculas_vistas")
-def get_peliculas_vistas(usuario_id: int, db: Session = Depends(get_db)):
-    peliculas = db.query(PeliculaVista).filter(PeliculaVista.usuario_id == usuario_id).all()
-    return peliculas
-
-@router.post("/usuarios/{usuario_id}/vista/{pelicula_id}")
-def marcar_vista(usuario_id: int, pelicula_id: int, db: Session = Depends(get_db)):
+@router.post("/interno/usuarios/{usuario_id}/vista/{pelicula_id}")
+def registrar_vista(usuario_id: int, pelicula_id: int, db: Session = Depends(get_db)):
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    ya_vista = db.query(PeliculaVista).filter(
+        PeliculaVista.usuario_id == usuario_id,
+        PeliculaVista.pelicula_id == pelicula_id
+    ).first()
+    if ya_vista:
+        raise HTTPException(status_code=400, detail="Película ya marcada como vista")
+    
     vista = PeliculaVista(usuario_id=usuario_id, pelicula_id=pelicula_id)
     db.add(vista)
     db.commit()

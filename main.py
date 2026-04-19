@@ -3,7 +3,9 @@ from database import engine, Base
 from routes import router
 import time
 
-# espera a que PostgreSQL esté listo
+#correr tdo
+#docker-compose up --build
+
 def create_tables():
     for i in range(10):
         try:
@@ -11,6 +13,7 @@ def create_tables():
             print("Tablas creadas", flush=True)
             return
         except Exception as e:
+            print(f"Esperando a PostgreSQL... intento {i+1}", flush=True)
             time.sleep(3)
 
 create_tables()

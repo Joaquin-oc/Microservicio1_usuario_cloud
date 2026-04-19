@@ -1,9 +1,12 @@
 from faker import Faker
-from database import SessionLocal
-from models import Usuario, Lista, ListaPelicula, PeliculaVista
+from database import SessionLocal, engine, Base
+from models import Usuario, PeliculaVista, Pelicula, Rol
+from auth import hash_password
 import random
-import sys
 
+#docker-compose exec api python fake_data.py
+
+Base.metadata.create_all(bind=engine)
 fake = Faker('es')
 
 def crear_fake_data():
@@ -13,65 +16,34 @@ def crear_fake_data():
     PELICULA_ID_MAX = 20015
 
     usuarios_ids = []
-    for i in range(100):  
+    for i in range(20000):
         usuario = Usuario(
             nombre=fake.name(),
             email=fake.unique.email(),
-            pais=fake.country()
+            password=hash_password(fake.password()),
+            pais=fake.country(),
+            rol=Rol.usuario
         )
         db.add(usuario)
         db.flush()
         usuarios_ids.append(usuario.id)
     db.commit()
-    print("Usuarios creados", flush=True)
+    print("usuarios creados", flush=True)
 
-    listas_ids = []
-    for usuario_id in usuarios_ids:
-        cantidad = random.randint(1, 3)
-        for _ in range(cantidad):
-            lista = Lista(
-                usuario_id=usuario_id,
-                nombre=random.choice([
-                    "Favoritas",
-                    "Watchlist",
-                    "Drama",
-                    "Comedia",
-                    "jijiju",
-                    "recomendadas"
-                ])
-            )
-            db.add(lista)
-            db.flush()
-            listas_ids.append(lista.id)
+    # crear un admin
+    admin = Usuario(
+        nombre="Admin",
+        email="eladminps@gmail.com",
+        password=hash_password("elpapuproadmin"),
+        pais="Peru",
+        rol=Rol.admin
+    )
+    db.add(admin)
     db.commit()
-    print("Listas creadas", flush=True)
-
-    for lista_id in listas_ids:
-        cantidad = random.randint(5, 15)
-        peliculas = random.sample(range(PELICULA_ID_MIN, PELICULA_ID_MAX + 1), cantidad)
-        for pelicula_id in peliculas:
-            item = ListaPelicula(
-                lista_id=lista_id,
-                pelicula_id=pelicula_id
-            )
-            db.add(item)
-    db.commit()
-    print("Películas agregadas a listas", flush=True)
-
-    for usuario_id in usuarios_ids:
-        cantidad = random.randint(5, 30)
-        peliculas = random.sample(range(PELICULA_ID_MIN, PELICULA_ID_MAX + 1), cantidad)
-        for pelicula_id in peliculas:
-            vista = PeliculaVista(
-                usuario_id=usuario_id,
-                pelicula_id=pelicula_id
-            )
-            db.add(vista)
-    db.commit()
-    print("Películas vistas creadas", flush=True)
+    print("Admin creado (email: eladminps@gmail.com, password: elpapuproadmin)", flush=True)
 
     db.close()
-    print("Fake data completada!", flush=True)
+    print("tdo creado", flush=True)
 
 if __name__ == "__main__":
     try:
