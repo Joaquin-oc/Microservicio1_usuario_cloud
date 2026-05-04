@@ -31,6 +31,11 @@ def login(usuario: Usuario = Depends(get_usuario_actual)):
 
 
 #pal normal
+@router.get("/auth/me")
+def me(usuario_actual: Usuario = Depends(get_usuario_actual)):
+    return usuario_actual
+
+
 @router.get("/usuarios/{id}")
 def get_usuario(id: int, usuario_actual: Usuario = Depends(get_usuario_actual), db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.id == id).first()
