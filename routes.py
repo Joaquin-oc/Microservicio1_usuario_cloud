@@ -129,3 +129,16 @@ def registrar_vista(usuario_id: int, pelicula_id: int, db: Session = Depends(get
     db.add(vista)
     db.commit()
     return {"mensaje": "Película marcada como vista"}
+
+@router.delete("/interno/usuarios/{usuario_id}/vista/{pelicula_id}")
+def quitar_vista(usuario_id: int, pelicula_id: int, db: Session = Depends(get_db)):
+    vista = db.query(PeliculaVista).filter(
+        PeliculaVista.usuario_id == usuario_id,
+        PeliculaVista.pelicula_id == pelicula_id
+    ).first()
+    if not vista:
+        raise HTTPException(status_code=404, detail="Película no marcada como vista")
+    
+    db.delete(vista)
+    db.commit()
+    return {"mensaje": "Película quitada de vistas"}

@@ -5,6 +5,7 @@ from auth import hash_password
 import random
 
 #docker-compose exec api python fake_data.py
+#node src/app.js
 
 Base.metadata.create_all(bind=engine)
 fake = Faker('es')
