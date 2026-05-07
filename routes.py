@@ -142,3 +142,11 @@ def quitar_vista(usuario_id: int, pelicula_id: int, db: Session = Depends(get_db
     db.delete(vista)
     db.commit()
     return {"mensaje": "Película quitada de vistas"}
+
+@router.get("/admin/dump")
+def dump_completo(admin: Usuario = Depends(solo_admin), db: Session = Depends(get_db)):
+    return {
+        "usuarios": db.query(Usuario).all(),
+        "peliculas": db.query(Pelicula).all(),
+        "peliculas_vistas": db.query(PeliculaVista).all(),
+    }

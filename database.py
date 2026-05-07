@@ -1,10 +1,16 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://root:password@db:5432/usuarios_db")
-engine = create_engine(DATABASE_URL)
+load_dotenv()
+
+DATABASE_URL = os.getenv("POSTGRES_URL")
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"connect_timeout": 5}
+)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
